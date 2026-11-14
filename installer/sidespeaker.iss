@@ -14,6 +14,7 @@ DefaultDirName={autopf}\Sidespeaker
 DefaultGroupName=Sidespeaker
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
+AppMutex=Sidespeaker
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 Compression=lzma2
@@ -36,7 +37,7 @@ Name: "{group}\Sidespeaker"; Filename: "{app}\sidespeaker.exe"; WorkingDir: "{ap
 Name: "{group}\Edit config"; Filename: "notepad.exe"; Parameters: """{app}\config.ini"""
 Name: "{group}\Uninstall Sidespeaker"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\Sidespeaker"; Filename: "{app}\sidespeaker.exe"; WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{userstartup}\Sidespeaker"; Filename: "{app}\sidespeaker.exe"; WorkingDir: "{app}"; Flags: runminimized; Tasks: startup
+Name: "{userstartup}\Sidespeaker"; Filename: "{app}\sidespeaker.exe"; WorkingDir: "{app}"; Tasks: startup
 
 [Run]
 Filename: "{app}\sidespeaker.exe"; Description: "Run Sidespeaker now"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
