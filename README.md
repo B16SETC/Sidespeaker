@@ -22,6 +22,7 @@ The sender keeps the stream continuous by filling silent moments with silence, a
 
 ```
 sender/    PC sender (C++, CMake)
+installer/ Windows installer script (Inno Setup)
 ios/       iPhone app (Swift, built with XcodeGen)
 android/   Android app (Kotlin, Gradle)
 .github/   CI: one workflow per target
@@ -33,11 +34,20 @@ Every push builds what changed. Open the **Actions** tab, pick the latest run of
 
 | Workflow | Artifact | Contents |
 |---|---|---|
-| sender | Sidespeaker-windows | `sidespeaker.exe` and `config.ini` |
+| sender | Sidespeaker-installer | `Sidespeaker-Setup.exe` |
+| sender | Sidespeaker-windows | `sidespeaker.exe` and `config.ini` (portable) |
 | ios | Sidespeaker-ipa | `Sidespeaker.ipa` |
 | android | Sidespeaker-apk | `Sidespeaker.apk` |
 
 Artifacts download as a zip. You can also start any workflow by hand with **Run workflow**.
+
+## Install on Windows
+
+Run `Sidespeaker-Setup.exe`. It installs for your user only (no admin needed) and adds a Start menu entry with an **Edit config** shortcut. It can also add a desktop shortcut or start Sidespeaker when you sign in. Upgrading keeps your `config.ini`. Uninstall from Settings > Apps.
+
+The installer is not code-signed, so Windows SmartScreen may warn. Choose **More info**, then **Run anyway**. It does not install Apple Devices or `adb`; see the phone setup below.
+
+The portable `sidespeaker.exe` reads the `config.ini` that sits next to it.
 
 ## Build the PC sender yourself
 
@@ -49,6 +59,17 @@ cmake --build build --config Release
 ```
 
 The exe and a copy of `config.ini` end up in `build\bin\Release`.
+
+## Build the installer yourself
+
+Install [Inno Setup 6](https://jrsoftware.org/isinfo.php), build the sender as above, then:
+
+```
+cmake --install build --config Release --prefix dist
+iscc installer\sidespeaker.iss
+```
+
+The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` to `iscc` to set the version.
 
 ## Set up the phone
 

@@ -25,6 +25,17 @@ void status(const std::string& m) {
     fflush(stdout);
 }
 
+std::string defaultConfigPath() {
+#ifdef _WIN32
+    char p[MAX_PATH];
+    DWORD n = GetModuleFileNameA(nullptr, p, MAX_PATH);
+    std::string s(p, n);
+    size_t k = s.find_last_of("\\/");
+    if (n > 0 && k != std::string::npos) return s.substr(0, k + 1) + "config.ini";
+#endif
+    return "config.ini";
+}
+
 void sleepMs(int ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
@@ -78,7 +89,7 @@ End stream(sock_t s, Capture& cap, const std::string& label, int pollMs, int fil
 }
 
 int main(int argc, char** argv) {
-    Config cfg(argc > 1 ? argv[1] : "config.ini");
+    Config cfg(argc > 1 ? argv[1] : defaultConfigPath());
     int pollMs = cfg.getInt("poll_ms", 5);
     int retryMs = cfg.getInt("retry_ms", 1000);
     int fillMs = cfg.getInt("fill_ms", 10);

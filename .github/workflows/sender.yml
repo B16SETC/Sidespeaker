@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - "sender/**"
+      - "installer/**"
       - "CMakeLists.txt"
       - ".github/workflows/sender.yml"
   workflow_dispatch:
@@ -14,7 +15,14 @@ jobs:
       - run: cmake -S . -B build -A x64
       - run: cmake --build build --config Release
       - run: cmake --install build --config Release --prefix dist
+      - run: choco upgrade innosetup -y
+      - run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.${{ github.run_number }} installer\sidespeaker.iss
       - uses: actions/upload-artifact@v4
         with:
           name: Sidespeaker-windows
           path: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sidespeaker-installer
+          path: installer-out/Sidespeaker-Setup.exe
