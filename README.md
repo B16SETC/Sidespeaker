@@ -87,7 +87,7 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 4. Install Android platform-tools on the PC. The installer's **Android support** component does this for you. Otherwise Sidespeaker finds `adb` on your PATH, next to `sidespeaker.exe`, in a `platform-tools` folder next to it, or in the Android Studio SDK. Or set `adb_path` in `config.ini`.
 5. Plug the phone into the PC with a data cable (some cables only charge), and set the USB mode to **File transfer** in the USB notification.
 6. Authorize the PC. With the screen on and unlocked, an **Allow USB debugging?** dialog appears. Tick **Always allow from this computer** and tap **Allow**. If the tray says `Android found (unauthorized)` and no dialog shows up, lock the phone, unplug the cable, plug it back in, unlock the phone, and tap **Allow** when the dialog appears. This is needed once per PC.
-7. Open the Sidespeaker app on the phone. The tray icon turns green when streaming starts.
+7. Open the Sidespeaker app on the phone. The tray icon turns green when streaming starts. While the app runs, a notification stays in the shade; closing the app (Back button or swiping it away from recent apps) stops it and removes the notification.
 
 ## Use it
 
@@ -95,6 +95,8 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 2. Run `sidespeaker.exe`. It lives in the system tray (check the hidden icons arrow). Hover over the icon to see the status: waiting for a phone, waiting for the app, or streaming. The icon is grey while waiting, green while streaming and red on an error.
 3. Play audio on the PC. It comes out of the phone.
 4. Right-click the tray icon to edit the config or exit.
+
+While the phone app runs, a persistent notification shows on Android. iOS does not allow pinned notifications, so the iPhone app shows a Now Playing card on the lock screen and in Control Center instead. Both go away when you close the app.
 
 Your PC's own speakers keep playing too, so mute them or switch outputs if you only want the phone. If both an iPhone and an Android phone are plugged in, the iPhone is used. Set `transport` to choose.
 

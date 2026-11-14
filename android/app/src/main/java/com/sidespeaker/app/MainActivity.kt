@@ -60,4 +60,9 @@ class MainActivity : Activity() {
         handler.removeCallbacks(tick)
         super.onPause()
     }
+
+    override fun onDestroy() {
+        if (isFinishing) stopService(Intent(this, AudioService::class.java))
+        super.onDestroy()
+    }
 }

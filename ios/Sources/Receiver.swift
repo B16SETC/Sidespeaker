@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import AVFoundation
+import MediaPlayer
 import UIKit
 
 final class Receiver: ObservableObject {
@@ -61,6 +62,7 @@ final class Receiver: ObservableObject {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback)
             try session.setActive(true)
+            setupNowPlaying()
             let l = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: port)!)
             l.newConnectionHandler = { [weak self] c in self?.accept(c) }
             l.start(queue: queue)
@@ -80,6 +82,23 @@ final class Receiver: ObservableObject {
             setStatus("Waiting for PC on port \(port)")
         } catch {
             setStatus("Error: \(error.localizedDescription)")
+        }
+    }
+
+    private func setupNowPlaying() {
+        let commands = MPRemoteCommandCenter.shared()
+        commands.playCommand.addTarget { _ in .success }
+        commands.pauseCommand.addTarget { _ in .success }
+        commands.togglePlayPauseCommand.addTarget { _ in .success }
+        DispatchQueue.main.async {
+            let center = MPNowPlayingInfoCenter.default()
+            center.nowPlayingInfo = [
+                MPMediaItemPropertyTitle: "Sidespeaker",
+                MPMediaItemPropertyArtist: "Playing PC audio over USB",
+                MPNowPlayingInfoPropertyIsLiveStream: true,
+                MPNowPlayingInfoPropertyPlaybackRate: 1.0
+            ]
+            center.playbackState = .playing
         }
     }
 
