@@ -1,0 +1,13 @@
+build/
+dist/
+Payload/
+*.ipa
+*.apk
+*.exe
+*.obj
+ios/*.xcodeproj
+ios/Info.plist
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
