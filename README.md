@@ -58,7 +58,7 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
-The exe and a copy of `config.ini` end up in `build\bin\Release`. Add `-DSIDESPEAKER_CONSOLE=ON` to the first command to build a console version that prints the status in a window instead of using the tray, which is handy for debugging.
+The exe and a copy of `config.ini` end up in `build\bin\Release`.
 
 ## Build the installer yourself
 
@@ -89,10 +89,9 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 ## Use it
 
 1. Open Sidespeaker on the phone.
-2. Start Sidespeaker on the PC. It runs in the system tray (it may be under the ^ overflow arrow). The icon is grey while waiting, green while streaming, and red on an error. Hover over it to see the status.
+2. Run `sidespeaker.exe`. It lives in the system tray (check the hidden icons arrow). Hover over the icon to see the status: waiting for a phone, waiting for the app, or streaming. The icon is grey while waiting, green while streaming and red on an error.
 3. Play audio on the PC. It comes out of the phone.
-
-Right-click the tray icon for **Edit config**, **Reload config**, and **Quit**.
+4. Right-click the tray icon to edit the config or exit.
 
 Your PC's own speakers keep playing too, so mute them or switch outputs if you only want the phone. If both an iPhone and an Android phone are plugged in, the iPhone is used. Set `transport` to choose.
 
@@ -110,7 +109,6 @@ Your PC's own speakers keep playing too, so mute them or switch outputs if you o
 | `usb_only` | 1 | iPhone only: ignore Wi-Fi connections. Set to 0 to allow them. |
 | `adb_path` | adb | Android only: path to the `adb` program. |
 | `adb_serial` | (empty) | Android only: pick a device when several are plugged in. |
-| `startup_notice` | 1 | Show a one-time "running in the tray" notice at startup. Set to 0 to hide it. |
 
 ### iPhone (`ios/project.yml`, under `info.properties`)
 
@@ -143,9 +141,9 @@ Phone settings take effect after a rebuild and reinstall.
 
 ## Troubleshooting
 
-- **Tray status keeps saying it is waiting for a phone:** check the cable. For an iPhone, unlock it, tap Trust, and install Apple Devices. For Android, enable USB debugging and accept the prompt. If your phone only shows up over Wi-Fi, `usb_only=1` ignores it.
-- **Status says adb was not found:** install platform-tools or set `adb_path`.
-- **Status says it is waiting for the app:** open Sidespeaker on the phone and check that the ports match.
+- **"waiting for iPhone or Android" forever:** check the cable. For an iPhone, unlock it, tap Trust, and install Apple Devices. For Android, enable USB debugging and accept the prompt. If your phone only shows up over Wi-Fi, `usb_only=1` ignores it.
+- **"adb not found":** install platform-tools or set `adb_path`.
+- **"waiting for app to be open":** open Sidespeaker on the phone and check that the ports match.
 - **iPhone app stops launching after a week:** the free Apple ID signing expired. Re-sideload.
 - **Two copies of the iPhone app:** an older build used a different bundle ID. Delete the old one.
 

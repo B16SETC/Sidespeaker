@@ -1,18 +1,16 @@
 #include "net.h"
 #include <algorithm>
 #include <chrono>
-#include <cstdio>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-#ifdef _WIN32
 #include <windows.h>
 #include <mmsystem.h>
-#endif
 #include "capture.h"
 #include "config.h"
 #include "transport.h"
+#include "tray.h"
 
 namespace {
 
@@ -20,19 +18,12 @@ using Clock = std::chrono::steady_clock;
 
 enum class End { Disconnected, CaptureError };
 
-void status(const std::string& m) {
-    printf("\r%-78s", m.c_str());
-    fflush(stdout);
-}
-
 std::string defaultConfigPath() {
-#ifdef _WIN32
     char p[MAX_PATH];
     DWORD n = GetModuleFileNameA(nullptr, p, MAX_PATH);
     std::string s(p, n);
     size_t k = s.find_last_of("\\/");
     if (n > 0 && k != std::string::npos) return s.substr(0, k + 1) + "config.ini";
-#endif
     return "config.ini";
 }
 
@@ -46,7 +37,7 @@ End stream(sock_t s, Capture& cap, const std::string& label, int pollMs, int fil
     uint32_t hdr[2] = { rate, (uint32_t)ch };
     if (!sendAll(s, hdr, 8)) return End::Disconnected;
     if (!cap.start()) return End::CaptureError;
-    status("streaming - " + label);
+    setStatus(TrayState::Active, "streaming - " + label);
 
     auto t0 = Clock::now();
     long long sent = 0;
@@ -88,25 +79,23 @@ End stream(sock_t s, Capture& cap, const std::string& label, int pollMs, int fil
 
 }
 
-int main(int argc, char** argv) {
-    Config cfg(argc > 1 ? argv[1] : defaultConfigPath());
+void work(const std::string& configPath) {
+    Config cfg(configPath);
     int pollMs = cfg.getInt("poll_ms", 5);
     int retryMs = cfg.getInt("retry_ms", 1000);
     int fillMs = cfg.getInt("fill_ms", 10);
     std::string mode = cfg.getString("transport", "auto");
 
-#ifdef _WIN32
     WSADATA w;
     WSAStartup(MAKEWORD(2, 2), &w);
     timeBeginPeriod(1);
-#endif
 
     std::vector<std::unique_ptr<Transport>> transports;
     if (mode == "auto" || mode == "ios") transports.push_back(makeUsbmuxd(cfg));
     if (mode == "auto" || mode == "android") transports.push_back(makeAdb(cfg));
     if (transports.empty()) {
-        printf("unknown transport '%s' (use auto, ios or android)\n", mode.c_str());
-        return 1;
+        setStatus(TrayState::Error, "unknown transport '" + mode + "' (use auto, ios or android)");
+        return;
     }
 
     std::string waiting = mode == "ios"     ? "waiting for iPhone (cable, unlocked, trusted)..."
@@ -119,12 +108,11 @@ int main(int argc, char** argv) {
             cap = makeCapture();
             std::string err;
             if (!cap->open(err)) {
-                status("audio capture failed: " + err);
+                setStatus(TrayState::Error, "audio capture failed: " + err);
                 cap.reset();
                 sleepMs(retryMs);
                 continue;
             }
-            printf("capturing %u Hz, %d ch\n\n", cap->sampleRate(), cap->channels());
         }
 
         sock_t s = kBadSock;
@@ -140,7 +128,7 @@ int main(int argc, char** argv) {
             if (note.empty()) note = why;
         }
         if (s == kBadSock) {
-            status(note.empty() ? waiting : note);
+            setStatus(TrayState::Idle, note.empty() ? waiting : note);
             sleepMs(retryMs);
             continue;
         }
@@ -151,10 +139,15 @@ int main(int argc, char** argv) {
         closeSock(s);
         if (e == End::CaptureError) {
             cap.reset();
-            status("audio device changed, reopening capture...");
+            setStatus(TrayState::Error, "audio device changed, reopening capture...");
         } else {
-            status("disconnected");
+            setStatus(TrayState::Idle, "disconnected");
         }
         sleepMs(retryMs);
     }
+}
+
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+    std::string path = __argc > 1 ? __argv[1] : defaultConfigPath();
+    return runTray(path, [path] { work(path); });
 }

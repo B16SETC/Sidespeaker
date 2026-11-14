@@ -1,16 +1,8 @@
 #include "transport.h"
-#include <cstdio>
 #include <sstream>
 #include <string>
 #include <vector>
-
-#ifdef _WIN32
-#define POPEN _popen
-#define PCLOSE _pclose
-#else
-#define POPEN popen
-#define PCLOSE pclose
-#endif
+#include <windows.h>
 
 namespace {
 
@@ -21,17 +13,42 @@ struct Dev {
 
 bool run(const std::string& cmd, std::string& out) {
     out.clear();
-#ifdef _WIN32
-    std::string full = "\"" + cmd + " 2>&1\"";
-#else
-    std::string full = cmd + " 2>&1";
-#endif
-    FILE* p = POPEN(full.c_str(), "r");
-    if (!p) return false;
+    SECURITY_ATTRIBUTES sa = {};
+    sa.nLength = sizeof sa;
+    sa.bInheritHandle = TRUE;
+    HANDLE rd = nullptr, wr = nullptr;
+    if (!CreatePipe(&rd, &wr, &sa, 0)) return false;
+    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
+
+    STARTUPINFOA si = {};
+    si.cb = sizeof si;
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    si.hStdOutput = wr;
+    si.hStdError = wr;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+    std::string full = "cmd.exe /d /c \"" + cmd + " 2>&1\"";
+    std::vector<char> line(full.begin(), full.end());
+    line.push_back('\0');
+
+    PROCESS_INFORMATION pi = {};
+    BOOL ok = CreateProcessA(nullptr, line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
+    CloseHandle(wr);
+    if (!ok) {
+        CloseHandle(rd);
+        return false;
+    }
     char b[512];
-    size_t n;
-    while ((n = fread(b, 1, sizeof b, p)) > 0) out.append(b, n);
-    return PCLOSE(p) == 0;
+    DWORD n;
+    while (ReadFile(rd, b, sizeof b, &n, nullptr) && n > 0) out.append(b, n);
+    CloseHandle(rd);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD code = 1;
+    GetExitCodeProcess(pi.hProcess, &code);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return code == 0;
 }
 
 std::vector<Dev> parseDevices(const std::string& out) {
