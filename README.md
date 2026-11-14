@@ -45,7 +45,7 @@ Artifacts download as a zip. You can also start any workflow by hand with **Run 
 
 Run `Sidespeaker-Setup.exe`. It installs for your user only (no admin needed) and adds a Start menu entry with an **Edit config** shortcut. It can also add a desktop shortcut or start Sidespeaker when you sign in. Upgrading keeps your `config.ini`. Uninstall from Settings > Apps.
 
-The installer is not code-signed, so Windows SmartScreen may warn. Choose **More info**, then **Run anyway**. It does not install Apple Devices or `adb`; see the phone setup below.
+The installer is not code-signed, so Windows SmartScreen may warn. Choose **More info**, then **Run anyway**. The installer has two optional components, both ticked in the full installation: **iPhone support** installs Apple Devices from the Microsoft Store through `winget`, and **Android support** downloads Android platform-tools from Google into the install folder. Sidespeaker uses that bundled `adb` automatically unless `adb_path` is set. The Store install needs `winget` (App Installer), which comes with Windows 11 and current Windows 10.
 
 The portable `sidespeaker.exe` reads the `config.ini` that sits next to it.
 
@@ -75,7 +75,7 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 
 ### iPhone
 
-1. Install Apple Devices (or iTunes) on the PC.
+1. Install Apple Devices (or iTunes) on the PC. The installer can do this for you.
 2. Sideload `Sidespeaker.ipa` with Sideloadly or AltStore. With a free Apple ID it expires after 7 days; re-sideload to refresh.
 3. Plug in the iPhone, unlock it, and tap **Trust** the first time.
 
@@ -83,7 +83,7 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 
 1. Install `Sidespeaker.apk` (copy it to the phone, or `adb install Sidespeaker.apk`). Allow installs from unknown sources if asked.
 2. On the phone, enable Developer options, then **USB debugging**.
-3. Install Android platform-tools on the PC and make sure `adb` is on your PATH, or set `adb_path` in `config.ini`.
+3. Install Android platform-tools on the PC. Sidespeaker finds `adb` on your PATH, next to `sidespeaker.exe`, in a `platform-tools` folder next to it, or in the Android Studio SDK. Otherwise set `adb_path` in `config.ini`.
 4. Plug in the phone and accept the "Allow USB debugging" prompt.
 
 ## Use it
@@ -143,6 +143,7 @@ Phone settings take effect after a rebuild and reinstall.
 
 - **"waiting for iPhone or Android" forever:** check the cable. For an iPhone, unlock it, tap Trust, and install Apple Devices. For Android, enable USB debugging and accept the prompt. If your phone only shows up over Wi-Fi, `usb_only=1` ignores it.
 - **"adb not found":** install platform-tools or set `adb_path`.
+- **Android never detected:** run `adb devices` in a terminal. The phone must be listed as `device`. If it is missing, check the cable, set the USB mode to File transfer, and install the phone maker's USB driver if needed.
 - **"waiting for app to be open":** open Sidespeaker on the phone and check that the ports match.
 - **iPhone app stops launching after a week:** the free Apple ID signing expired. Re-sideload.
 - **Two copies of the iPhone app:** an older build used a different bundle ID. Delete the old one.
