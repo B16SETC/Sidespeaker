@@ -82,9 +82,12 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 ### Android
 
 1. Install `Sidespeaker.apk` (copy it to the phone, or `adb install Sidespeaker.apk`). Allow installs from unknown sources if asked.
-2. On the phone, enable Developer options, then **USB debugging**.
-3. Install Android platform-tools on the PC. Sidespeaker finds `adb` on your PATH, next to `sidespeaker.exe`, in a `platform-tools` folder next to it, or in the Android Studio SDK. Otherwise set `adb_path` in `config.ini`.
-4. Plug in the phone and accept the "Allow USB debugging" prompt.
+2. Turn on Developer options: Settings > About phone, then tap **Build number** 7 times. Android does not let a program do this for you.
+3. Settings > System > Developer options, then turn on **USB debugging**. On Xiaomi, Redmi and POCO phones also turn on **USB debugging (Security settings)**.
+4. Install Android platform-tools on the PC. The installer's **Android support** component does this for you. Otherwise Sidespeaker finds `adb` on your PATH, next to `sidespeaker.exe`, in a `platform-tools` folder next to it, or in the Android Studio SDK. Or set `adb_path` in `config.ini`.
+5. Plug the phone into the PC with a data cable (some cables only charge), and set the USB mode to **File transfer** in the USB notification.
+6. Authorize the PC. With the screen on and unlocked, an **Allow USB debugging?** dialog appears. Tick **Always allow from this computer** and tap **Allow**. If the tray says `Android found (unauthorized)` and no dialog shows up, lock the phone, unplug the cable, plug it back in, unlock the phone, and tap **Allow** when the dialog appears. This is needed once per PC.
+7. Open the Sidespeaker app on the phone. The tray icon turns green when streaming starts.
 
 ## Use it
 
@@ -143,7 +146,8 @@ Phone settings take effect after a rebuild and reinstall.
 
 - **"waiting for iPhone or Android" forever:** check the cable. For an iPhone, unlock it, tap Trust, and install Apple Devices. For Android, enable USB debugging and accept the prompt. If your phone only shows up over Wi-Fi, `usb_only=1` ignores it.
 - **"adb not found":** install platform-tools or set `adb_path`.
-- **Android never detected:** run `adb devices` in a terminal. The phone must be listed as `device`. If it is missing, check the cable, set the USB mode to File transfer, and install the phone maker's USB driver if needed.
+- **Android never detected:** run `adb devices` in a terminal. The phone must be listed as `device`. If it is missing, check the cable (use a data cable), set the USB mode to File transfer, and install the phone maker's USB driver if needed. Setting `transport=android` in `config.ini` makes the tray show exactly what adb sees.
+- **"Android found (unauthorized)":** the phone has not approved this PC yet. Lock the phone, unplug the cable, plug it in again, unlock the phone and tap **Allow** on the "Allow USB debugging?" dialog. If no dialog appears, use Developer options > **Revoke USB debugging authorizations**, switch **USB debugging** off and on, replug, and turn off screen overlays (chat bubbles, night filters, screen recorders), which can hide the dialog. Close Android Studio or phone-manager programs, then run `adb kill-server` if another adb is holding the connection.
 - **"waiting for app to be open":** open Sidespeaker on the phone and check that the ports match.
 - **iPhone app stops launching after a week:** the free Apple ID signing expired. Re-sideload.
 - **Two copies of the iPhone app:** an older build used a different bundle ID. Delete the old one.
