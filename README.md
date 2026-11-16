@@ -2,6 +2,8 @@
 
 Use your phone as a PC speaker over a USB cable. A small program on the PC captures whatever it is playing and streams it through the cable to an app on the phone. No Wi-Fi, no account, no cost.
 
+Version 2.0 works with several phones at once, iPhones and Android phones mixed. Pick which ones play, and optionally turn on surround sound and drag each phone to where it sits in the room.
+
 | | iPhone | Android |
 |---|---|---|
 | Windows PC | supported | supported |
@@ -10,7 +12,7 @@ Use your phone as a PC speaker over a USB cable. A small program on the PC captu
 
 ## How it works
 
-- **PC sender (`sender/`):** captures system audio (WASAPI loopback on Windows) and finds the phone, then sends raw 16-bit PCM. A short header (sample rate and channel count) comes first.
+- **PC sender (`sender/`):** captures system audio (WASAPI loopback on Windows), finds every phone plugged in, and sends each selected phone its own raw 16-bit PCM stream. A short header (sample rate and channel count) comes first. In surround mode a mixer works out what each phone plays from where it sits.
   - **iPhone:** through the Apple usbmuxd service that ships with iTunes and the Apple Devices app.
   - **Android:** through `adb forward`, which tunnels a port on the PC to a port on the phone.
 - **iPhone app (`ios/`):** a SwiftUI app that listens on a TCP port and plays the stream with AVAudioEngine. Built on GitHub Actions, so no Mac is needed.
@@ -91,14 +93,28 @@ The result is `installer-out\Sidespeaker-Setup.exe`. Pass `/DAppVersion=1.2.3` t
 
 ## Use it
 
-1. Open Sidespeaker on the phone.
-2. Run `sidespeaker.exe`. It lives in the system tray (check the hidden icons arrow). Hover over the icon to see the status: waiting for a phone, waiting for the app, or streaming. The icon is grey while waiting, green while streaming and red on an error.
-3. Play audio on the PC. It comes out of the phone.
-4. Right-click the tray icon to edit the config or exit.
+1. Open Sidespeaker on each phone.
+2. Run `sidespeaker.exe`. It lives in the system tray (check the hidden icons arrow). Hover over the icon to see the status: waiting for a phone, streaming to one or more phones, or an error. The icon is grey while waiting, green while streaming and red on an error.
+3. Left-click the tray icon to open the **Phones** window. Every phone that is plugged in is listed with a checkbox and its status. Tick the phones that should play and untick the ones that should not. Newly connected phones are ticked by default. **Test** plays a short beep on one phone so you can tell which is which.
+4. Play audio on the PC. It comes out of every ticked phone.
+5. Right-click the tray icon to open the window, edit the config or exit.
+
+Android phones are listed by model name. iPhones are listed as "iPhone" plus the last four characters of their ID, because Apple does not share the device name without pairing. Use **Test** to match them to the physical phone.
 
 While the phone app runs, a persistent notification shows on Android. iOS does not allow pinned notifications, so the iPhone app shows a Now Playing card on the lock screen and in Control Center instead. Both go away when you close the app.
 
-Your PC's own speakers keep playing too, so mute them or switch outputs if you only want the phone. If both an iPhone and an Android phone are plugged in, the iPhone is used. Set `transport` to choose.
+Your PC's own speakers keep playing too, so mute them or switch outputs if you only want the phones. Set `transport` in `config.ini` to `ios` or `android` to ignore the other kind.
+
+### Surround sound
+
+Tick **Surround sound** in the Phones window. A map appears with you in the middle and the front of the room at the top. Drag each ticked phone to where it really is. The label under each phone shows which part of the sound it plays, for example Front left, Center, Side right or Rear left, and it updates as you drag. A phone placed on top of you plays the full mix.
+
+- **Stereo audio:** Sidespeaker builds a front left, front right, center and two rear channels from the left and right channels, and gives each part to the phones closest to it. With only two phones, put one on the left and one on the right.
+- **5.1 or 7.1 audio:** set your default playback device to 5.1 or 7.1 in the Windows sound settings (or use a virtual surround device). Apps that output real surround then send each channel to the phone nearest to that speaker position. The subwoofer channel is not used.
+- **Each phone plays one channel (mono)** in surround mode. With surround off, every ticked phone plays the same stereo sound.
+- Positions, ticks and the surround setting are remembered per phone in `%APPDATA%\Sidespeaker\layout.ini`.
+
+Phones are not synchronised with each other beyond the shared stream. Each app has its own buffer, so mixing iPhones and Androids, or locking an iPhone, can shift timing by a few hundred milliseconds. For the tightest result use the same kind of phone with the screen on.
 
 ## Configuration
 
@@ -106,14 +122,14 @@ Your PC's own speakers keep playing too, so mute them or switch outputs if you o
 
 | Key | Default | Meaning |
 |---|---|---|
-| `transport` | auto | `auto`, `ios`, or `android`. Auto tries the iPhone first, then Android. |
+| `transport` | auto | `auto`, `ios`, or `android`. Auto lists both kinds of phone. |
 | `port` | 5000 | Phone port to connect to. Must match the app. |
 | `poll_ms` | 5 | How often the capture buffer is checked. |
 | `retry_ms` | 1000 | Delay between connection attempts. |
 | `fill_ms` | 10 | Smallest chunk of silence sent to keep the stream continuous. |
 | `usb_only` | 1 | iPhone only: ignore Wi-Fi connections. Set to 0 to allow them. |
 | `adb_path` | adb | Android only: path to the `adb` program. |
-| `adb_serial` | (empty) | Android only: pick a device when several are plugged in. |
+| `scan_ms` | 1000 | How often the PC looks for phones being plugged in or removed. |
 
 ### iPhone (`ios/project.yml`, under `info.properties`)
 
@@ -148,14 +164,15 @@ Phone settings take effect after a rebuild and reinstall.
 
 - **"waiting for iPhone or Android" forever:** check the cable. For an iPhone, unlock it, tap Trust, and install Apple Devices. For Android, enable USB debugging and accept the prompt. If your phone only shows up over Wi-Fi, `usb_only=1` ignores it.
 - **"adb not found":** install platform-tools or set `adb_path`.
-- **Android never detected:** run `adb devices` in a terminal. The phone must be listed as `device`. If it is missing, check the cable (use a data cable), set the USB mode to File transfer, and install the phone maker's USB driver if needed. Setting `transport=android` in `config.ini` makes the tray show exactly what adb sees.
+- **Android never detected:** run `adb devices` in a terminal. The phone must be listed as `device`. If it is missing, check the cable (use a data cable), set the USB mode to File transfer, and install the phone maker's USB driver if needed. Open the tray window to see each phone and its status. With no phone listed, the window shows why (for example adb not found).
 - **"Android found (unauthorized)":** the phone has not approved this PC yet. Lock the phone, unplug the cable, plug it in again, unlock the phone and tap **Allow** on the "Allow USB debugging?" dialog. If no dialog appears, use Developer options > **Revoke USB debugging authorizations**, switch **USB debugging** off and on, replug, and turn off screen overlays (chat bubbles, night filters, screen recorders), which can hide the dialog. Close Android Studio or phone-manager programs, then run `adb kill-server` if another adb is holding the connection.
-- **"waiting for app to be open":** open Sidespeaker on the phone and check that the ports match.
+- **"Open the Sidespeaker app":** open Sidespeaker on that phone and check that the ports match.
+- **A phone is listed but silent:** check that it is ticked and its status says Streaming. Use **Test** to check it. In surround mode, a phone placed where no sound is mapped to it only plays a quiet share, so drag it closer to a speaker position.
 - **iPhone app stops launching after a week:** the free Apple ID signing expired. Re-sideload.
 - **Two copies of the iPhone app:** an older build used a different bundle ID. Delete the old one.
 
 ## Limitations
 
 - The PC sender only captures audio on Windows so far.
-- One phone at a time. Audio is raw PCM, sized for a USB cable, not Wi-Fi.
+- Surround sound plays one channel per phone and does not compensate for different phone buffers or distances. Audio is raw PCM, sized for a USB cable, not Wi-Fi.
 - Expect roughly the prebuffer length in delay, which is noticeable with video.

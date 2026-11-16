@@ -1,5 +1,6 @@
 #include "transport.h"
 #include <algorithm>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -142,72 +143,94 @@ class Adb : public Transport {
 public:
     explicit Adb(const Config& c)
         : adb_(c.getString("adb_path", "adb")),
-          serial_(c.getString("adb_serial", "")),
           port_(c.getInt("port", 5000)),
           explicit_(c.getString("transport", "auto") == "android") {}
 
-    const char* name() const override { return "Android"; }
+    const char* kind() const override { return "Android"; }
 
-    sock_t connect(std::string& why) override {
+    void scan(std::vector<Found>& out, std::string& note) override {
+        std::string adb = locateAdb(adb_);
+        if (adb.empty()) {
+            note = explicit_ ? "adb not found - install Android platform-tools or set adb_path in config.ini"
+                             : "Android needs adb (Android platform-tools), which was not found";
+            return;
+        }
+        std::string text;
+        if (!run(adb, "devices", text, 15000) && text.empty()) {
+            note = "adb did not respond - close other adb or phone-manager programs";
+            return;
+        }
+        for (auto& d : parseDevices(text)) {
+            if (d.serial.rfind("emulator-", 0) == 0) continue;
+            Found f;
+            f.kind = "Android";
+            f.serial = d.serial;
+            f.id = "android:" + d.serial;
+            f.state = d.state == "device" ? 2 : d.state == "unauthorized" ? 1 : 0;
+            f.name = f.state == 2 ? modelOf(adb, d.serial) : nameOf(d.serial);
+            out.push_back(f);
+        }
+    }
+
+    sock_t connect(const Found& f, std::string& why) override {
         why.clear();
         std::string adb = locateAdb(adb_);
         if (adb.empty()) {
-            why = explicit_ ? "adb not found - install Android platform-tools or set adb_path in config.ini"
-                            : "waiting for iPhone or Android (adb not found, needed for Android)...";
+            why = "adb not found";
             return kBadSock;
         }
-
+        int local = localPort(f.serial);
         std::string out;
-        if (!run(adb, "devices", out, 15000) && out.empty()) {
-            why = "adb did not respond - close other adb or phone-manager programs";
+        if (!run(adb, "-s " + f.serial + " forward tcp:" + std::to_string(local) + " tcp:" + std::to_string(port_), out, 10000)) {
+            why = "adb forward failed";
             return kBadSock;
         }
-
-        std::vector<Dev> match;
-        for (auto& d : parseDevices(out))
-            if (serial_.empty() || d.serial == serial_) match.push_back(d);
-        if (match.empty()) {
-            if (explicit_) why = "no Android device listed by adb - check cable, file-transfer mode and USB debugging";
-            return kBadSock;
-        }
-
-        std::vector<Dev> ready;
-        for (auto& d : match)
-            if (d.state == "device") ready.push_back(d);
-        if (ready.empty()) {
-            why = "Android found (" + match[0].state + "): unlock it and allow USB debugging";
-            return kBadSock;
-        }
-        if (ready.size() > 1) {
-            why = "Several Android devices: set adb_serial in config.ini";
-            return kBadSock;
-        }
-
-        std::string spec = "tcp:" + std::to_string(port_);
-        if (!run(adb, "-s " + ready[0].serial + " forward " + spec + " " + spec, out, 10000)) {
-            why = "adb forward failed (is the port already in use?)";
-            return kBadSock;
-        }
-
-        sock_t s = connectLocal(port_);
+        sock_t s = connectLocal(local);
         if (s == kBadSock) {
-            why = "adb forward failed (is the port already in use?)";
+            why = "adb forward failed";
             return kBadSock;
         }
         char b = 0;
         if (!waitReadable(s, 1500) || recv(s, &b, 1, 0) != 1 || b != 'S') {
             closeSock(s);
-            why = "Android found, waiting for app to be open...";
+            why = "Open the Sidespeaker app";
             return kBadSock;
         }
         return s;
     }
 
 private:
+    std::string nameOf(const std::string& serial) {
+        auto it = names_.find(serial);
+        return it == names_.end() ? std::string("Android") : it->second;
+    }
+
+    std::string modelOf(const std::string& adb, const std::string& serial) {
+        auto it = names_.find(serial);
+        if (it != names_.end() && it->second != "Android") return it->second;
+        std::string out;
+        std::string model = "Android";
+        if (run(adb, "-s " + serial + " shell getprop ro.product.model", out, 5000)) {
+            while (!out.empty() && (out.back() == '\r' || out.back() == '\n' || out.back() == ' ')) out.pop_back();
+            if (!out.empty() && out.size() < 48) model = out;
+        }
+        names_[serial] = model;
+        return model;
+    }
+
+    int localPort(const std::string& serial) {
+        auto it = ports_.find(serial);
+        if (it != ports_.end()) return it->second;
+        int p = port_ + 100 + (int)ports_.size();
+        ports_[serial] = p;
+        return p;
+    }
+
     std::string adb_;
-    std::string serial_;
     int port_;
     bool explicit_;
+    std::map<std::string, std::string> names_;
+    std::map<std::string, int> ports_;
 };
 
 }

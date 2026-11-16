@@ -1,6 +1,9 @@
 add_executable(sidespeaker WIN32
     src/main.cpp
     src/tray.cpp
+    src/ui.cpp
+    src/hub.cpp
+    src/mixer.cpp
     src/config.cpp
     src/net.cpp
     src/usbmuxd.cpp
@@ -8,7 +11,7 @@ add_executable(sidespeaker WIN32
 )
 
 target_compile_features(sidespeaker PRIVATE cxx_std_17)
-target_compile_definitions(sidespeaker PRIVATE NOMINMAX)
+target_compile_definitions(sidespeaker PRIVATE NOMINMAX SS_VERSION=\"${PROJECT_VERSION}\")
 
 if(WIN32)
     target_sources(sidespeaker PRIVATE src/capture_wasapi.cpp)

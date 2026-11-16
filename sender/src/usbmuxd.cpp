@@ -34,27 +34,24 @@ int findInt(const std::string& r, const char* key) {
     return i == std::string::npos ? -1 : atoi(r.c_str() + i + 9);
 }
 
+std::string findStr(const std::string& seg, const char* key) {
+    size_t c = seg.find(std::string("<key>") + key + "</key>");
+    if (c == std::string::npos) return std::string();
+    size_t x = seg.find("<string>", c), y = seg.find("</string>", c);
+    if (x == std::string::npos || y == std::string::npos || y < x) return std::string();
+    return seg.substr(x + 8, y - x - 8);
+}
+
 class Usbmuxd : public Transport {
 public:
     explicit Usbmuxd(const Config& c) : port_(c.getInt("port", 5000)), usbOnly_(c.getInt("usb_only", 1) != 0) {}
 
-    const char* name() const override { return "iPhone"; }
+    const char* kind() const override { return "iPhone"; }
 
-    sock_t connect(std::string& why) override {
-        why.clear();
-        int id = findDevice();
-        if (id < 0) return kBadSock;
-        sock_t s = muxConnect(id);
-        if (s == kBadSock) why = "iPhone found, waiting for app to be open...";
-        return s;
-    }
-
-private:
-    int findDevice() {
+    void scan(std::vector<Found>& out, std::string&) override {
         sock_t s = connectLocal(27015);
-        if (s == kBadSock) return -1;
+        if (s == kBadSock) return;
         std::string r;
-        int id = -1;
         if (muxSend(s, plist(std::string("<key>MessageType</key><string>ListDevices</string>") + kClient)) && muxRecv(s, r)) {
             const std::string key = "<key>DeviceID</key>";
             std::vector<std::pair<size_t, int>> pos;
@@ -70,23 +67,34 @@ private:
                 while (e < pos.size() && pos[e].second == pos[j].second) e++;
                 size_t to = e < pos.size() ? pos[e].first : r.size();
                 std::string seg = r.substr(pos[j].first, to - pos[j].first);
-                std::string type;
-                size_t c = seg.find("<key>ConnectionType</key>");
-                if (c != std::string::npos) {
-                    size_t x = seg.find("<string>", c), y = seg.find("</string>", c);
-                    if (x != std::string::npos && y != std::string::npos && y > x) type = seg.substr(x + 8, y - x - 8);
-                }
+                std::string type = findStr(seg, "ConnectionType");
+                std::string serial = findStr(seg, "SerialNumber");
+                if (serial.empty()) serial = "device" + std::to_string(pos[j].second);
                 if (!usbOnly_ || type == "USB") {
-                    id = pos[j].second;
-                    break;
+                    Found f;
+                    f.kind = "iPhone";
+                    f.serial = serial;
+                    f.id = "ios:" + serial;
+                    f.muxId = pos[j].second;
+                    std::string tail = serial.size() > 4 ? serial.substr(serial.size() - 4) : serial;
+                    f.name = "iPhone " + tail;
+                    f.state = 2;
+                    out.push_back(f);
                 }
                 j = e;
             }
         }
         closeSock(s);
-        return id;
     }
 
+    sock_t connect(const Found& f, std::string& why) override {
+        why.clear();
+        sock_t s = muxConnect(f.muxId);
+        if (s == kBadSock) why = "Open the Sidespeaker app";
+        return s;
+    }
+
+private:
     sock_t muxConnect(int dev) {
         sock_t s = connectLocal(27015);
         if (s == kBadSock) return kBadSock;

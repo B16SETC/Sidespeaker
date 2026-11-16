@@ -1,4 +1,6 @@
 #include "tray.h"
+#include "ui.h"
+#include "util.h"
 #include <windows.h>
 #include <shellapi.h>
 #include <cmath>
@@ -12,6 +14,7 @@ namespace {
 constexpr UINT kTrayMsg = WM_APP + 1;
 constexpr UINT kStatusMsg = WM_APP + 2;
 constexpr UINT kIconId = 1;
+constexpr UINT kCmdOpen = 1000;
 constexpr UINT kCmdConfig = 1001;
 constexpr UINT kCmdExit = 1002;
 
@@ -22,14 +25,6 @@ HWND g_hwnd = nullptr;
 HICON g_icons[3] = {};
 UINT g_taskbarCreated = 0;
 std::wstring g_configPath;
-
-std::wstring widen(const std::string& s) {
-    if (s.empty()) return L"";
-    int n = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
-    std::wstring w((size_t)n, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], n);
-    return w;
-}
 
 std::wstring statusLine() {
     std::string tx;
@@ -108,6 +103,7 @@ void showMenu() {
     HMENU m = CreatePopupMenu();
     AppendMenuW(m, MF_STRING | MF_GRAYED, 0, statusLine().c_str());
     AppendMenuW(m, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(m, MF_STRING, kCmdOpen, L"Phones and surround");
     AppendMenuW(m, MF_STRING, kCmdConfig, L"Edit config");
     AppendMenuW(m, MF_STRING, kCmdExit, L"Exit");
     POINT p;
@@ -116,6 +112,7 @@ void showMenu() {
     UINT cmd = (UINT)TrackPopupMenu(m, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_RETURNCMD, p.x, p.y, 0, g_hwnd, nullptr);
     PostMessageW(g_hwnd, WM_NULL, 0, 0);
     DestroyMenu(m);
+    if (cmd == kCmdOpen) uiToggle();
     if (cmd == kCmdConfig) ShellExecuteW(nullptr, L"open", L"notepad.exe", (L"\"" + g_configPath + L"\"").c_str(), nullptr, SW_SHOWNORMAL);
     if (cmd == kCmdExit) DestroyWindow(g_hwnd);
 }
@@ -130,6 +127,7 @@ LRESULT CALLBACK proc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         notify(NIM_MODIFY);
         return 0;
     case kTrayMsg:
+        if (LOWORD(lp) == WM_LBUTTONUP) uiToggle();
         if (LOWORD(lp) == WM_RBUTTONUP || LOWORD(lp) == WM_CONTEXTMENU) showMenu();
         return 0;
     case WM_DESTROY: {
@@ -173,6 +171,7 @@ int runTray(const std::string& configPath, std::function<void()> worker) {
     RegisterClassExW(&wc);
     g_hwnd = CreateWindowExW(0, wc.lpszClassName, L"Sidespeaker", WS_OVERLAPPED, 0, 0, 0, 0, nullptr, nullptr, inst, nullptr);
     if (!g_hwnd) return 1;
+    uiInit(g_hwnd);
 
     g_icons[(int)TrayState::Idle] = makeIcon(150, 150, 150);
     g_icons[(int)TrayState::Active] = makeIcon(46, 190, 80);

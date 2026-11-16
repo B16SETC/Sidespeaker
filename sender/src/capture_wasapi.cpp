@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <mmreg.h>
 #include <algorithm>
 #include <cstdio>
 
@@ -31,13 +32,15 @@ public:
         TRY(ac_->GetService(__uuidof(IAudioCaptureClient), (void**)&cap_));
         rate_ = wf_->nSamplesPerSec;
         ch_ = wf_->nChannels;
-        outCh_ = std::min<int>(ch_, 2);
+        outCh_ = std::min<int>(ch_, 8);
+        if (wf_->wFormatTag == WAVE_FORMAT_EXTENSIBLE) mask_ = ((const WAVEFORMATEXTENSIBLE*)wf_)->dwChannelMask;
         isFloat_ = wf_->wBitsPerSample == 32;
         return true;
     }
 
     uint32_t sampleRate() const override { return rate_; }
     int channels() const override { return outCh_; }
+    uint32_t channelMask() const override { return mask_; }
 
     bool start() override {
         ac_->Stop();
@@ -88,6 +91,7 @@ private:
     uint32_t rate_ = 0;
     int ch_ = 0;
     int outCh_ = 0;
+    uint32_t mask_ = 0;
     bool isFloat_ = false;
     bool com_ = false;
 };

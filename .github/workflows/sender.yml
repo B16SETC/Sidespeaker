@@ -17,7 +17,7 @@ jobs:
       - run: cmake --install build --config Release --prefix dist
       - run: choco upgrade innosetup -y
       - run: |
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.${{ github.run_number }} installer\sidespeaker.iss
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=2.0.0 installer\sidespeaker.iss
       - uses: actions/upload-artifact@v4
         with:
           name: Sidespeaker-windows

@@ -10,6 +10,7 @@ public:
     virtual bool open(std::string& err) = 0;
     virtual uint32_t sampleRate() const = 0;
     virtual int channels() const = 0;
+    virtual uint32_t channelMask() const = 0;
     virtual bool start() = 0;
     virtual void stop() = 0;
     virtual int read(std::vector<int16_t>& out) = 0;

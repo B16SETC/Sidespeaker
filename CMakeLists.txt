@@ -1,4 +1,4 @@
 cmake_minimum_required(VERSION 3.20)
-project(Sidespeaker LANGUAGES CXX)
+project(Sidespeaker VERSION 2.0.0 LANGUAGES CXX)
 
 add_subdirectory(sender)
